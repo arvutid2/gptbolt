@@ -1,0 +1,688 @@
+// ──────────────────────────────────────────────────────────────────────────────
+// Bolt Demo: Modular Game App (Vite + React + TypeScript)
+// Goal: Clear, GitHub‑ready structure where Landing is one file, and
+// matchmaking, game session, and each game live in separate folders.
+// Drop‑in new games via /src/games/* + manifest registration.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// FILE: package.json
+{
+  "name": "bolt-demo-games",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "eslint": "^9.9.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "typescript": "~5.5.4",
+    "vite": "^5.4.1"
+  }
+}
+
+---
+// FILE: tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@lib/*": ["src/lib/*"],
+      "@games/*": ["src/games/*"],
+      "@modules/*": ["src/modules/*"],
+      "@pages/*": ["src/pages/*"]
+    },
+    "strict": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}
+
+---
+// FILE: vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+});
+
+---
+// FILE: index.html
+<!doctype html>
+<html lang="et">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bolt Demo Games</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+---
+// FILE: src/main.tsx
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);
+
+---
+// FILE: src/App.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import Landing from "@pages/Landing";
+import Play from "@pages/Play";
+import FindMatch from "@pages/FindMatch";
+import Navbar from "@components/Navbar";
+
+export default function App() {
+  return (
+    <div className="min-h-screen">
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/find-1v1" element={<FindMatch />} />
+        <Route path="/play/:gameId" element={<Play />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
+}
+
+---
+// FILE: src/components/Navbar.tsx
+import { Link, NavLink } from "react-router-dom";
+
+export default function Navbar() {
+  const link = (to: string, label: string) => (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `px-3 py-2 rounded-xl border text-sm ${isActive ? "bg-black text-white" : "hover:bg-black/5"}`
+      }
+    >
+      {label}
+    </NavLink>
+  );
+
+  return (
+    <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+      <nav className="max-w-5xl mx-auto flex items-center justify-between p-3">
+        <Link to="/" className="font-bold">Bolt Demo</Link>
+        <div className="flex gap-2">
+          {link("/", "Landing")}
+          {link("/find-1v1", "Find 1v1 Match")}
+        </div>
+      </nav>
+    </header>
+  );
+}
+
+---
+// FILE: src/pages/Landing.tsx
+// Single-file landing page (nõutud). Võib hiljem asendada teie disainiga.
+import { Link } from "react-router-dom";
+
+export default function Landing() {
+  return (
+    <main className="max-w-5xl mx-auto p-6">
+      <section className="py-12 text-center">
+        <h1 className="text-4xl font-extrabold mb-3">Play. Win. Repeat.</h1>
+        <p className="opacity-80 mb-6">1v1 mängud. Kiire sobitamine. Turvaline payout loogika.</p>
+        <div className="flex gap-3 justify-center">
+          <a href="#choose" className="px-5 py-3 rounded-2xl border">Choose Your Battle</a>
+          <Link to="/find-1v1" className="px-5 py-3 rounded-2xl border">Find 1v1 Match</Link>
+        </div>
+      </section>
+
+      <section id="choose" className="py-12">
+        <h2 className="text-2xl font-semibold mb-4">Choose Your Battle</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <GameCard title="Rock‑Paper‑Scissors" to="/play/rps" />
+          <GameCard title="Durak (stub)" to="/play/durak" />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function GameCard({ title, to }: { title: string; to: string }) {
+  return (
+    <Link to={to} className="block rounded-2xl border p-5 hover:shadow">
+      <div className="text-lg font-semibold mb-2">{title}</div>
+      <div className="text-sm opacity-70">Click to play</div>
+    </Link>
+  );
+}
+
+---
+// FILE: src/pages/FindMatch.tsx
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MatchmakingProvider, useMatchmaking } from "@modules/matchmaking/MatchmakingProvider";
+import StartGame from "@modules/session/StartGame";
+
+export default function FindMatch() {
+  return (
+    <MatchmakingProvider>
+      <FindMatchInner />
+    </MatchmakingProvider>
+  );
+}
+
+function FindMatchInner() {
+  const nav = useNavigate();
+  const { status, findOpponent, cancel } = useMatchmaking();
+  const [gameId, setGameId] = useState("rps");
+  const [buyIn, setBuyIn] = useState(1);
+  const [walletConnected, setWalletConnected] = useState(false);
+
+  return (
+    <main className="max-w-3xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Find 1v1 Match</h1>
+      <div className="grid gap-4">
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="grid">
+            <span className="text-sm mb-1">Game</span>
+            <select value={gameId} onChange={e => setGameId(e.target.value)} className="border rounded-xl p-2">
+              <option value="rps">Rock‑Paper‑Scissors</option>
+              <option value="durak">Durak (stub)</option>
+            </select>
+          </label>
+          <label className="grid">
+            <span className="text-sm mb-1">Buy‑in</span>
+            <input type="number" min={1} value={buyIn} onChange={e => setBuyIn(Number(e.target.value))} className="border rounded-xl p-2" />
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input id="w" type="checkbox" checked={walletConnected} onChange={e => setWalletConnected(e.target.checked)} />
+          <label htmlFor="w">Wallet connected</label>
+        </div>
+
+        <StartGame
+          gameId={gameId}
+          buyIn={buyIn}
+          walletConnected={walletConnected}
+          onStart={async () => {
+            const ok = await findOpponent({ gameId, buyIn });
+            if (ok) nav(`/play/${gameId}`);
+          }}
+          status={status}
+          onCancel={cancel}
+        />
+      </div>
+    </main>
+  );
+}
+
+---
+// FILE: src/pages/Play.tsx
+import { useParams } from "react-router-dom";
+import { GameHost } from "@modules/session/GameHost";
+import { payoutConfig } from "@lib/payouts";
+
+export default function Play() {
+  const { gameId = "rps" } = useParams();
+  return (
+    <main className="max-w-3xl mx-auto p-6">
+      <GameHost
+        gameId={gameId}
+        players={2}
+        buyIn={1}
+        payoutConfig={payoutConfig}
+        onComplete={(r) => {
+          // show result or route to summary page
+          alert(`Result: ${r.outcome} | You get: ${r.payout.you}`);
+        }}
+      />
+    </main>
+  );
+}
+
+---
+// FILE: src/lib/featureFlags.ts
+export const features = {
+  overlayMode: true,
+  historyPage: false,
+  newLobby: false,
+} as const;
+
+---
+// FILE: src/lib/payouts.ts
+import type { Outcome } from "@games/GameTypes";
+
+export type PayoutConfig = {
+  platformFee: number; // 0..1
+  modes: {
+    "1v1"?: { winner: number };
+    "3p"?: { first: number; second: number };
+    "4p"?: { first: number; second: number; third: number };
+  };
+};
+
+export const payoutConfig: PayoutConfig = {
+  platformFee: 0.1,
+  modes: { "1v1": { winner: 0.9 } },
+};
+
+export function calcPayouts({ buyIn, players, outcome, cfg }: {
+  buyIn: number; players: number; outcome: Outcome; cfg: PayoutConfig;
+}) {
+  const pool = buyIn * players;
+  const fee = pool * cfg.platformFee;
+  const net = pool - fee;
+  if (players === 2) {
+    if (outcome === "draw") return { you: buyIn, platform: 0 };
+    const youWin = outcome === "win";
+    return { you: youWin ? net : 0, platform: fee };
+  }
+  if (players === 3 && (outcome === "rank1" || outcome === "rank2")) {
+    const { first = 0.7, second = 0.2 } = cfg.modes["3p"] || ({} as any);
+    const share = outcome === "rank1" ? first : second;
+    return { you: net * share, platform: fee };
+  }
+  if (players === 4 && ["rank1", "rank2", "rank3"].includes(outcome)) {
+    const { first = 0.6, second = 0.25, third = 0.05 } = cfg.modes["4p"] || ({} as any);
+    const map: any = { rank1: first, rank2: second, rank3: third };
+    return { you: net * map[outcome], platform: fee };
+  }
+  return { you: 0, platform: fee };
+}
+
+---
+// FILE: src/modules/matchmaking/MatchmakingProvider.tsx
+import React, { createContext, useContext, useMemo, useState } from "react";
+
+export type MatchStatus = "idle" | "searching" | "found" | "cancelled";
+
+export type FindParams = { gameId: string; buyIn: number };
+
+type Ctx = {
+  status: MatchStatus;
+  findOpponent: (p: FindParams) => Promise<boolean>;
+  cancel: () => void;
+};
+
+const MMContext = createContext<Ctx | undefined>(undefined);
+
+export function MatchmakingProvider({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<MatchStatus>("idle");
+
+  const findOpponent = async ({ gameId, buyIn }: FindParams) => {
+    // Demo: fake 1.2s lookup
+    setStatus("searching");
+    await new Promise((r) => setTimeout(r, 1200));
+    setStatus("found");
+    return true;
+  };
+
+  const cancel = () => setStatus("cancelled");
+
+  const value = useMemo(() => ({ status, findOpponent, cancel }), [status]);
+  return <MMContext.Provider value={value}>{children}</MMContext.Provider>;
+}
+
+export function useMatchmaking() {
+  const ctx = useContext(MMContext);
+  if (!ctx) throw new Error("useMatchmaking must be used inside MatchmakingProvider");
+  return ctx;
+}
+
+---
+// FILE: src/modules/session/StartGame.tsx
+import React from "react";
+import type { MatchStatus } from "@modules/matchmaking/MatchmakingProvider";
+
+export default function StartGame({
+  gameId,
+  buyIn,
+  walletConnected,
+  onStart,
+  onCancel,
+  status,
+}: {
+  gameId: string;
+  buyIn: number;
+  walletConnected: boolean;
+  onStart: () => void | Promise<void>;
+  onCancel: () => void;
+  status: MatchStatus;
+}) {
+  const disabled = !gameId || buyIn <= 0 || !walletConnected || status === "searching";
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        className="px-4 py-2 rounded-xl border disabled:opacity-50"
+        disabled={disabled}
+        onClick={() => void onStart()}
+        title={!walletConnected ? "Connect wallet first" : ""}
+      >
+        {status === "searching" ? "Searching…" : "Start Game"}
+      </button>
+      {status === "searching" && (
+        <button className="px-4 py-2 rounded-xl border" onClick={onCancel}>Cancel</button>
+      )}
+    </div>
+  );
+}
+
+---
+// FILE: src/modules/session/GameHost.tsx
+import React, { Suspense, useMemo, useState } from "react";
+import { loadGame } from "@games/manifest";
+import type { GameMeta, GameSessionResult } from "@games/GameTypes";
+import { calcPayouts, type PayoutConfig } from "@lib/payouts";
+
+export function GameHost({
+  gameId,
+  playerRole = "solo",
+  adminSettings = {},
+  buyIn = 1,
+  players = 2,
+  payoutConfig,
+  onComplete,
+}: {
+  gameId: string;
+  playerRole?: "host" | "guest" | "solo";
+  adminSettings?: Record<string, unknown>;
+  buyIn?: number;
+  players?: number;
+  payoutConfig: PayoutConfig;
+  onComplete?: (r: GameSessionResult & { payout: { you: number; platform: number } }) => void;
+}) {
+  const [module, setModule] = useState<null | { meta: GameMeta; Component: any }>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    loadGame(gameId)
+      .then((m) => { if (!alive) return; setModule({ meta: m.meta, Component: m.default }); })
+      .catch((e) => { if (!alive) return; setError(String(e?.message || e)); });
+    return () => { alive = false; };
+  }, [gameId]);
+
+  const settings = useMemo(
+    () => ({ ...(module?.meta.defaultSettings || {}), ...(adminSettings || {}) }),
+    [module, adminSettings]
+  );
+
+  if (error) return <div className="p-4 text-red-600">Game load error: {error}</div>;
+  if (!module) return <div className="p-4">Loading game…</div>;
+
+  const { Component } = module;
+  const handleFinish = (r: GameSessionResult) => {
+    const payout = calcPayouts({ buyIn, players, outcome: r.outcome, cfg: payoutConfig });
+    onComplete?.({ ...r, payout });
+  };
+
+  return (
+    <Suspense fallback={<div className="p-4">Preparing…</div>}>
+      <Component settings={settings} onFinish={handleFinish} playerRole={playerRole} />
+    </Suspense>
+  );
+}
+
+---
+// FILE: src/games/GameTypes.ts
+export type PlayerId = "you" | "opponent";
+export type Outcome = "win" | "loss" | "draw" | "rank1" | "rank2" | "rank3" | "rank4";
+export type GameSessionResult = {
+  outcome: Outcome;
+  rank?: number;
+  score?: number;
+  meta?: Record<string, unknown>;
+};
+export type GameCapabilities = {
+  overlay?: boolean;
+  bestOf?: boolean;
+  drawRefund?: boolean;
+  realtime?: boolean;
+  ai?: boolean;
+  maxPlayers?: 1 | 2 | 3 | 4;
+};
+export type GameConfigSchema = {
+  fields: Array<
+    | { key: string; label: string; type: "number"; min?: number; max?: number }
+    | { key: string; label: string; type: "boolean" }
+    | { key: string; label: string; type: "select"; options: string[] }
+  >;
+};
+export type GameMeta = {
+  id: string;
+  name: string;
+  icon?: string;
+  capabilities: GameCapabilities;
+  defaultSettings?: Record<string, unknown>;
+  configSchema?: GameConfigSchema;
+};
+export type GameProps = {
+  settings: Record<string, unknown>;
+  onFinish: (result: GameSessionResult) => void;
+  playerRole?: "host" | "guest" | "solo";
+};
+export type GameModule = {
+  meta: GameMeta;
+  default: (props: GameProps) => JSX.Element;
+};
+
+---
+// FILE: src/games/manifest.ts
+import type { GameMeta, GameModule } from "@games/GameTypes";
+
+export const gameManifest: Array<{
+  meta: GameMeta;
+  load: () => Promise<GameModule>;
+}> = [
+  {
+    meta: {
+      id: "rps",
+      name: "Rock‑Paper‑Scissors",
+      icon: "✊📄✂️",
+      capabilities: { overlay: true, bestOf: true, drawRefund: true, ai: true, maxPlayers: 2 },
+      defaultSettings: { bestOf: 3, drawRefund: true },
+      configSchema: {
+        fields: [
+          { key: "bestOf", label: "Best of", type: "number", min: 1, max: 9 },
+          { key: "drawRefund", label: "Refund on draw", type: "boolean" }
+        ],
+      },
+    },
+    load: () => import("@games/rps").then((m) => m as unknown as GameModule),
+  },
+  {
+    meta: {
+      id: "durak",
+      name: "Durak (stub)",
+      icon: "🃏",
+      capabilities: { overlay: true, realtime: true, maxPlayers: 2 },
+      defaultSettings: { variant: "classic" },
+    },
+    load: () => import("@games/durak").then((m) => m as unknown as GameModule),
+  },
+];
+
+export function listGames(): GameMeta[] {
+  return gameManifest.map((g) => g.meta);
+}
+
+export async function loadGame(gameId: string): Promise<GameModule> {
+  const item = gameManifest.find((g) => g.meta.id === gameId);
+  if (!item) throw new Error(`Unknown game: ${gameId}`);
+  return item.load();
+}
+
+---
+// FILE: src/games/rps/index.tsx
+import React from "react";
+import type { GameModule, GameProps, GameSessionResult } from "@games/GameTypes";
+
+const choices = ["rock", "paper", "scissors"] as const;
+type Choice = typeof choices[number];
+
+function decide(a: Choice, b: Choice): GameSessionResult["outcome"] {
+  if (a === b) return "draw";
+  if ((a === "rock" && b === "scissors") || (a === "paper" && b === "rock") || (a === "scissors" && b === "paper")) return "win";
+  return "loss";
+}
+
+const RpsGame: React.FC<GameProps> = ({ settings, onFinish }) => {
+  const [your, setYour] = React.useState<Choice | null>(null);
+  const [opp, setOpp] = React.useState<Choice | null>(null);
+  const bestOf = Number(settings?.bestOf ?? 3);
+  const drawRefund = Boolean(settings?.drawRefund ?? true);
+  const [score, setScore] = React.useState({ you: 0, opp: 0 });
+
+  const playRound = (c: Choice) => {
+    const o = choices[Math.floor(Math.random() * 3)];
+    setYour(c); setOpp(o);
+    const outcome = decide(c, o);
+    if (outcome === "win") setScore((s) => ({ ...s, you: s.you + 1 }));
+    if (outcome === "loss") setScore((s) => ({ ...s, opp: s.opp + 1 }));
+  };
+
+  React.useEffect(() => {
+    const needed = Math.ceil(bestOf / 2);
+    if (score.you >= needed || score.opp >= needed) {
+      const final: GameSessionResult = score.you === score.opp
+        ? { outcome: drawRefund ? "draw" : score.you > score.opp ? "win" : "loss", meta: { score } }
+        : { outcome: score.you > score.opp ? "win" : "loss", meta: { score } };
+      onFinish(final);
+    }
+  }, [score, bestOf, drawRefund, onFinish]);
+
+  return (
+    <div className="p-6 max-w-md mx-auto rounded-2xl border">
+      <div className="text-xl font-semibold mb-4">Rock‑Paper‑Scissors</div>
+      <div className="mb-2">Best of: {bestOf}</div>
+      <div className="mb-4">Score: You {score.you} – {score.opp} Opp</div>
+      <div className="flex gap-2 mb-4">
+        {choices.map((c) => (
+          <button key={c} className="px-4 py-2 rounded-xl border" onClick={() => playRound(c as Choice)}>
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="opacity-70">Last: You {your ?? "?"} vs Opp {opp ?? "?"}</div>
+    </div>
+  );
+};
+
+export const meta = {
+  id: "rps",
+  name: "Rock‑Paper‑Scissors",
+  capabilities: { overlay: true, bestOf: true, drawRefund: true, ai: true, maxPlayers: 2 },
+  defaultSettings: { bestOf: 3, drawRefund: true },
+};
+
+const mod: GameModule = { meta: meta as any, default: RpsGame as any };
+export default mod.default;
+export { meta };
+
+---
+// FILE: src/games/durak/index.tsx
+import React from "react";
+import type { GameModule, GameProps } from "@games/GameTypes";
+
+const DurakGame: React.FC<GameProps> = ({ settings, onFinish }) => {
+  return (
+    <div className="p-6 max-w-md mx-auto rounded-2xl border">
+      <div className="text-xl font-semibold mb-4">Durak (Prototype)</div>
+      <div className="mb-2 text-sm opacity-70">Variant: {String(settings?.variant ?? "classic")}</div>
+      <button className="px-4 py-2 rounded-xl border" onClick={() => onFinish({ outcome: "win", meta: { reason: "stub" } })}>
+        End (Fake Win)
+      </button>
+    </div>
+  );
+};
+
+export const meta = {
+  id: "durak",
+  name: "Durak (stub)",
+  capabilities: { overlay: true, realtime: true, maxPlayers: 2 },
+  defaultSettings: { variant: "classic" },
+};
+
+const mod: GameModule = { meta: meta as any, default: DurakGame as any };
+export default mod.default;
+export { meta };
+
+---
+// FILE: README.md
+# Bolt Demo Games (Vite + React + TS)
+
+**Eesmärk:** loogiline struktuur GitHubi jaoks. Landing on ühes failis; matchmaking, session (GameHost/StartGame) ja iga mäng eraldi kaustas. Uue mängu lisamine = lisa kaust `src/games/<nimi>` + rida `src/games/manifest.ts`.
+
+## Kiire käivitus
+```bash
+npm i
+npm run dev
+```
+
+## Kaustastruktuur
+```
+src/
+  components/        # Üldised UI tükid (Navbar)
+  games/             # Iga mäng on plugin
+    durak/
+    rps/
+    manifest.ts      # Mängude register + lazy load
+    GameTypes.ts
+  lib/               # Jagatud loogika (payouts, flags)
+  modules/           # Äriloogika plokid
+    matchmaking/
+    session/
+  pages/             # Routing vaated
+```
+
+## Uue mängu lisamine
+1) Loo kaust `src/games/<mäng>/` ja ekspordi **default** komponent.
+2) Lisa `manifest.ts` sisse uus kirje koos `load: () => import("@games/<mäng>")`.
+3) Lisa nupuke Landingul või suuna `/play/<mäng>` route’iga.
+
+## Matchmaking
+- `MatchmakingProvider` hoiab staatuse (`idle|searching|found`).
+- `StartGame` kontrollib eeldused (wallet, buy‑in) ja käivitab `findOpponent`.
+
+## Game session
+- `GameHost` laeb mängu dünaamiliselt, merge’ib seaded ja arvutab `payout`. 
+
+## Payout loogika
+- `lib/payouts.ts` – platvormitasu + võitja jagamine.
+
+## Miks nii?
+- **Eraldus**: Landing ühe failina, mängud eraldi → lihtne lisada/muuta.
+- **Lazy load**: iga mäng laetakse, kui vaja → bundel väike.
+- **Plugin pattern**: manifest = üks koht, kuhu uued mängud registreerida.
